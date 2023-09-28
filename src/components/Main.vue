@@ -6,7 +6,9 @@
                   :style="`height: ${settings.floorBox}px; width: ${settings.floorBox}px`"
               >
               </div>
-              <div class="highlighter" :style="`top: ${shaft.top}px; height: ${settings.floorBox}px; width: ${settings.floorBox}px`">
+              <div class="highlighter"
+                :class="{ 'waiting' : shafts[index1].waitingFlag}"
+                :style="`top: ${shaft.top}px; height: ${settings.floorBox}px; width: ${settings.floorBox}px`">
                   {{ Math.round((settings.floors * settings.floorBox  - shaft.top) / settings.floorBox) }}
               </div>
               <button class="reset" @click="reset(index1)" :style="`width: ${settings.floorBox}px`">
@@ -44,12 +46,12 @@ export default{
         floor: newFloor,
         top: this.settings.floorBox * (this.settings.floors - newFloor),
         loader: false,
+        waitingFlag:false,
       });
     }
   },
   methods:{
     async callFloor(floor){
-      console.log(floor)
       if (this.shafts.length === 0) return
       let closestIndex = -1
       let diff = this.settings.floors + 1
@@ -73,10 +75,14 @@ export default{
           return
       }
       for (let i = 0; i < 20 * amount; i++) {
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise(resolve => setTimeout(resolve, 35));
           this.shafts[index].top -= step
       }
-      this.shafts[index].loader = false
+      this.shafts[index].waitingFlag = true
+      setTimeout(()=>{
+        this.shafts[index].loader = false
+        this.shafts[index].waitingFlag = false
+      }, 3000)
     },
     async reset(index){
       if (this.shafts[index].loader) return;
@@ -91,36 +97,40 @@ export default{
 
 <style>
 * {
-    color: black
+  color: black
 }
 .container {
-    height: fit-content;
-    margin-left: 50px;
-    display: flex;
-    flex-direction: row;
-    align-self: center;
+  height: fit-content;
+  margin-left: 50px;
+  display: flex;
+  flex-direction: row;
+  align-self: center;
 }
 
 .shafts {
-    display: flex;
-    flex-direction: row;
+  display: flex;
+  flex-direction: row;
 }
 .shaft {
-    display: flex;
-    flex-direction: column;
-    position: relative;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 .reset {
-    position: absolute;
-    bottom: -50px;
-    height: 40px;
-    min-width: 50px;
+  position: absolute;
+  bottom: -50px;
+  height: 40px;
+  min-width: 50px;
 }
 .highlighter {
-    position: absolute;
-    min-width: 50px;
-    background-color: aliceblue;
-    z-index: -1;
+  text-align: center;
+  position: absolute;
+  min-width: 50px;
+  background-color: aliceblue;
+  z-index: -1;
+}
+.waiting{
+  background-color: brown;
 }
 
 .floors {
