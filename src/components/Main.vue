@@ -2,25 +2,22 @@
   <div class="container">
       <div class="shafts">
           <div v-for="shaft, index1 of shafts" class="shaft">
-              <div v-for="index of floors" class="floor"
-                  :style="`height: ${floorBox}px; width: ${floorBox}px`"
+              <div v-for="index of settings.floors" class="floor"
+                  :style="`height: ${settings.floorBox}px; width: ${settings.floorBox}px`"
               >
               </div>
-              <div class="highlighter" :style="`top: ${shaft.top}px; height: ${floorBox}px; width: ${floorBox}px`">
-                  {{ Math.round((floors * floorBox  - shaft.top) / floorBox) }}
+              <div class="highlighter" :style="`top: ${shaft.top}px; height: ${settings.floorBox}px; width: ${settings.floorBox}px`">
+                  {{ Math.round((settings.floors * settings.floorBox  - shaft.top) / settings.floorBox) }}
               </div>
-              <button class="reset"
-                  :style="`width: ${floorBox}px`">
+              <button class="reset" :style="`width: ${settings.floorBox}px`">
                   Reset
               </button>
           </div>
       </div>
-      <div class="floors">
-          <div v-for="index of floors" class="floor" 
-              :style="`height: ${floorBox}px; width: ${floorBox}px`"
-          >
+      <div class="buttons">
+          <div v-for="index of settings.floors" class="floor" :style="`height: ${settings.floorBox}px; width: ${settings.floorBox}px`">
             <button class="button">
-            {{ floors - index + 1}}
+              {{  settings.floors - index + 1 }}
             </button> 
           </div>
       </div>
@@ -31,11 +28,24 @@
 export default{
   data(){
     return{
-      shafts: 7,
-      floors: 15,
-      floorBox: 20
+      settings:{
+        shafts: 5,
+        floors: 15,
+        floorBox: 20,
+      },
+      shafts:[]
     }
-  }
+  },
+  mounted(){
+    for (let i = 0; i < this.settings.shafts; i++) {
+        const newFloor = Math.round(Math.random()* (this.settings.floors - 1)) + 1
+        this.shafts.push({
+            floor: newFloor,
+            top: this.settings.floorBox * (this.settings.floors - newFloor),
+            loader: false
+        })
+    }
+  }  
 }
 </script>
 
@@ -45,9 +55,10 @@ export default{
 }
 .container {
     height: fit-content;
+    margin-left: 50px;
     display: flex;
     flex-direction: row;
-    gap: 1rem;
+    align-self: center;
 }
 
 .shafts {
