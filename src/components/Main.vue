@@ -16,7 +16,7 @@
       </div>
       <div class="buttons">
           <div v-for="index of settings.floors" class="floor" :style="`height: ${settings.floorBox}px; width: ${settings.floorBox}px`">
-            <button class="button">
+            <button class="button" @click="callFloor(settings.floors - index + 1)">
               {{  settings.floors - index + 1 }}
             </button> 
           </div>
@@ -48,6 +48,24 @@ export default{
     }
   },
   methods:{
+    async callFloor(floor){
+      console.log(floor)
+      if (this.shafts.length === 0) return
+      let closestIndex = -1
+      let diff = this.settings.floors + 1
+      for (let i = 0; i < this.shafts.length; i++) {
+          if (this.shafts[i].floor === floor) return
+          if (Math.abs(this.shafts[i].floor - floor) < diff && !this.shafts[i].loader) {
+              closestIndex = i
+              diff = Math.abs(this.shafts[i].floor - floor)
+          }
+      }
+      if (closestIndex === -1) return
+      this.shafts[closestIndex].loader = true
+      this.shafts[closestIndex].floor = floor
+      let newTop = this.settings.floorBox * (this.settings.floors - floor)
+      await this.shiftFloor(closestIndex, newTop, diff)
+    },
     async shiftFloor(index, to, amount){
       let step = (this.shafts[index].top - to) / (20 * amount)
       if (step === 0)  {
