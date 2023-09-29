@@ -49,7 +49,9 @@ export default{
         floorBox: 20,
       },
       shafts:[],
+      shaftsTop:[],
       floorsButtons:[],
+      callStack:[],
     };
   },
   mounted() {
@@ -99,6 +101,14 @@ export default{
       handler(){
         let a = {...this.shafts}
         localStorage.setItem("shafts", JSON.stringify(a));
+        const check = (item) => !item.loader
+        const flag = this.shafts.some(check)
+        console.log(flag)
+        if(this.callStack.length > 0 && flag){
+          const a = this.callStack.shift()
+          console.log(this.callStack)
+          this.callFloor(a)
+        }
       },
       deep: true
     },
@@ -117,6 +127,8 @@ export default{
       let diff = this.settings.floors + 1
       let elevator = 0
 
+      this.callStack.push(floor)
+
       for (let i = 0; i < this.shafts.length; i++) {
           if (this.shafts[i].floor === floor) return
           if (Math.abs(this.shafts[i].floor - floor) < diff && !this.shafts[i].loader) {
@@ -127,6 +139,7 @@ export default{
       }
       if (closestIndex === -1) return
       this.shafts[closestIndex].loader = true
+      this.callStack.shift()
       this.floorsButtons[floor - 1] = false
       this.shafts[closestIndex].floor = floor
 
