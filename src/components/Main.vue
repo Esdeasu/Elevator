@@ -49,7 +49,7 @@ export default{
         floorBox: 20,
       },
       shafts:[],
-      floorsButtons:[]
+      floorsButtons:[],
     };
   },
   mounted() {
@@ -126,9 +126,8 @@ export default{
           }
       }
       if (closestIndex === -1) return
-
-      this.floorsButtons[floor - 1] = false
       this.shafts[closestIndex].loader = true
+      this.floorsButtons[floor - 1] = false
       this.shafts[closestIndex].floor = floor
 
       let newTop = this.settings.floorBox * (this.settings.floors - floor)
@@ -152,18 +151,21 @@ export default{
       }
       this.shafts[index].waitingFlag = true
       this.shafts[index].arrow = ""
-      setTimeout(()=>{
-        this.floorsButtons[floor - 1] = true
-        this.shafts[index].loader = false;
-        this.shafts[index].waitingFlag = false;
-      }, 3000)
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      this.floorsButtons[floor - 1] = true
+      this.shafts[index].loader = false;
+      this.shafts[index].waitingFlag = false;
+      
     },
     async reset(index){
       if (this.shafts[index].loader) return;
+      const tempFloor = this.shafts[index].floor - 1
       this.shafts[index].loader = true
-      await this.shiftFloor(index, (this.settings.floors - 1) * this.settings.floorBox, (this.shafts[index].floor - 1)); 
       this.shafts[index].floor = 1
-      this.shafts[index].loader = false
+      this.shafts[index].arrow = "down"
+      await this.shiftFloor(index, (this.settings.floors - 1) * this.settings.floorBox, tempFloor , 1); 
     },
   }
 }
