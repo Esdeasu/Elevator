@@ -1,5 +1,13 @@
 <template>
-  <div class="container">
+  <div class="inputs">
+    Кол. этажей
+    <input type="number" v-model="newFloor">
+    Кол. лифтов
+    <input type="number" v-model="newShafts">
+    <button @click = "newSettings">Ок</button>
+  </div>
+  
+  <div class="container">  
     <Shafts
       @reset-shaft="reset"
       :get-settings="settings"
@@ -23,6 +31,8 @@ export default{
   },
   data(){
     return{
+      newFloor: null,
+      newShafts: null,
       //Настройки количества шахт и этажей
       settings:{
         shafts: 5,
@@ -33,10 +43,16 @@ export default{
       floorsButtons:[], //Массив с флагами для кнопок вызова лифта
     };
   },
+  created(){
+    if(localStorage.getItem("settings")){
+      this.settings = JSON.parse(localStorage.getItem("settings")).data;
+    }
+  },
   mounted() {
     if(!localStorage.getItem("shafts")){
       this.createShafts();
     }else{
+      
       let s = JSON.parse(localStorage.getItem("shafts")).data;
 
       for(let i = 0; i < Object.keys(s).length; i++){
@@ -76,10 +92,21 @@ export default{
       },
       deep: true
     },
+    settings: {
+      handler(){
+        localStorage.setItem("settings", JSON.stringify({data : this.settings}));
+      },
+      deep: true
+    }
   },
   methods:{
-    methodThatForcesUpdate() {
-      this.$forceUpdate();  // Notice we have to use a $ here
+    newSettings(){
+      this.settings.floors = this.newFloor;
+      this.settings.shafts = this.newShafts;
+      
+      this.shafts = []
+
+      this.createShafts()
     },
     // Формирование массива с шахтами стартовой информацией
     createShafts(){
@@ -87,7 +114,7 @@ export default{
         const newFloor = Math.round(Math.random() * (this.settings.floors - 1)) + 1;
         this.shafts.push({
           floor: newFloor,                                                  // Текущий этаж на котором находится лифт
-          top: this.settings.floorBox * (this.settings.floors - newFloor),  // Этаж на котором находится лифт в пикселях
+          top: this.settings.floorBox * (this.settings.floors - newFloor),                  // Этаж на котором находится лифт в пикселях
           loader: false,                                                    // Занят ли в данный момент лифт
           waitingFlag:false,                                                // Флаг для анимации ожидания лифта по прибытию на необходимый этаж
           arrow: '',                                                        // Направление движения лифта
@@ -126,7 +153,6 @@ export default{
 
       await this.shiftFloor(closestIndex, newTop, diff, floor);
     },
-
     // Механика движения лифта
     async shiftFloor(index, to, amount, floor){
       //Определение шага движения лифта
@@ -153,7 +179,6 @@ export default{
       this.shafts[index].waitingFlag = false;
       
     },
-
     //Метод возврата лифта на 1 этаж
     async reset(index){
       if (this.shafts[index].loader) return;
@@ -177,5 +202,10 @@ export default{
   display: flex;
   flex-direction: row;
   align-self: center;
+}
+.inputs{
+  display: flex;
+  flex-direction: column;
+  margin: 20px;
 }
 </style>
