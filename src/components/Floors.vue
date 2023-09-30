@@ -6,7 +6,7 @@
       <button 
         style="width: 100%"
         :class="{'waitingButt' : !getFloorButtons[getSettings.floors - index]}" 
-        @click="$emit('call', (getSettings.floors - index + 1))">
+        @click="$emit('callElevator', (getSettings.floors - index + 1))">
           {{  getSettings.floors - index + 1 }}
       </button> 
     </div>
