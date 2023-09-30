@@ -1,9 +1,11 @@
 <template>
-  <Main/>
+  <div class="main">
+    <Main/>
+  </div>
 </template>
 
 <script>
-import Main from './components/Main.vue'
+import Main from './views/Main.vue';
 
 export default{
   components:{
@@ -14,4 +16,10 @@ export default{
 </script>
 
 <style scoped>
+.main{
+  height: inherit;
+  width: inherit;
+  position: absolute;
+  display: flex;
+}
 </style>
