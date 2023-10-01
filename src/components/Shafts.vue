@@ -8,15 +8,13 @@
       <div class="highlighter"
         :class="{ 'waiting' : getShafts[index1].waitingFlag}"
         :style="`top: ${shaft.top}px; height: ${getSettings.floorBox}px; width: ${getSettings.floorBox}px`">
-          {{getShafts[index1].floor}}
-          <div v-if="getShafts[index1].loader">
-            <div v-if = "getShafts[index1].arrow === 'up'">
-              &#8679
-            </div>
-            <div v-if = "getShafts[index1].arrow === 'down'">
-              &#8681
-            </div>
-          </div>
+          {{getShafts[index1].floor + 1}}
+          <span v-if = "getShafts[index1].arrow === 'up'">
+            &#8679
+          </span>
+          <span v-if = "getShafts[index1].arrow === 'down'" class="rotate">
+            &#8679
+          </span>
       </div>
       <button class="reset" @click = "$emit('resetShaft', index1)" :style="`width: ${getSettings.floorBox}px`">
         Reset
@@ -79,6 +77,9 @@ export default{
 }
 .waiting{
   animation: waiting 1s linear infinite;
+}
+.rotate {
+  transform: rotate(180deg);
 }
 @keyframes waiting {
   from{

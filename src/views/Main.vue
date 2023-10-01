@@ -1,9 +1,11 @@
 <template>
   <div class="inputs">
     Кол. этажей
-    <input type="number" v-model="newFloor">
+    <input type="number" min="1" max="28" v-model="newFloor">
     Кол. лифтов
-    <input type="number" v-model="newShafts">
+    <input type="number" min="1" max="20" v-model="newShafts">
+    Высота этажа
+    <input type="number" min="1" max="40" v-model="newBox">
     <div v-if="msgFlag">{{ msg }}</div>
     <button @click = "newSettings" style="margin-top: 10px;">Ок</button>
   </div>
@@ -15,7 +17,7 @@
       :get-shafts="shafts"
     />
     <Floors
-      @call-elevator="callElevator"
+      @call-elevator="findElevator"
       :get-settings="settings"
       :get-floor-buttons="floorsButtons"
     />
@@ -34,53 +36,28 @@ export default{
     return{
       newFloor: null,
       newShafts: null,
+      newBox: null,
 
       settings: {
-        shafts: 5,
-        floors: 17,
-        floorBox: 30,
+        shafts: 5,    // Количество шахт
+        floors: 15,   // Количество этажей
+        floorBox: 40, // Высота этажа
       },
 
-      shafts: [],        
-      floorsButtons: [],
-      msgFlag: false,
-      msg: "",
+      shafts: [],
+      /*shafts : [{
+        floor:  Текущий этаж на котором находится лифт
+        top:  Этаж на котором находится лифт в пикселях
+        waitingFlag: Флаг ожидания лифта по прибытию на необходимый этаж
+        arrow: Направление движения лифта
+      },...]*/
+  
+      floorsButtons: [],  // Список флагов для каждого этажа
+      msgFlag: false,     
+      msg: "",  
+      callStack: [],      // Очередь вызовов
+      elevatorLoaders: [] // Состояние лифтов
     };
-  },
-  created(){
-    if(localStorage.getItem("settings")){
-      this.settings = JSON.parse(localStorage.getItem("settings")).data;
-    }
-  },
-  mounted() {
-    if(!localStorage.getItem("shafts")){
-      this.createShafts();
-    }else{
-      const shaftsFromStore = JSON.parse(localStorage.getItem("shafts")).data;
-
-      for(let i = 0; i < Object.keys(shaftsFromStore).length; i++){
-        this.shafts.push(shaftsFromStore[i.toString()]);
-      };
-
-      for(let i = 0; i < this.shafts.length; i++){
-        if(this.shafts[i].waitingFlag){
-          setTimeout(()=>{
-            this.floorsButtons[this.shafts[i].floor - 1] = true;
-            this.shafts[i].loader = false;
-            this.shafts[i].waitingFlag = false;
-          }, 3000);
-      
-        }else if(this.shafts[i].arrow != ''){
-          let newTop = this.settings.floorBox * (this.settings.floors - this.shafts[i].floor);
-          let diff = Math.abs(this.shafts[i].floor - (this.settings.floors * this.settings.floorBox  - this.shafts[i].top) / this.settings.floorBox);
-          this.elevatorMovement(i, newTop, diff, this.shafts[i].floor);
-
-        }else if(this.shafts[i].loader){
-          this.shafts[i].loader = false;
-        };
-      };
-      this.floorsButtons = JSON.parse(localStorage.getItem("buttons")).data;
-    }
   },
   watch:{
     shafts: {
@@ -89,62 +66,98 @@ export default{
       },
       deep: true
     },
-    floorsButtons: {
+    callStack: {
       handler(){
-        localStorage.setItem("buttons", JSON.stringify({data : this.floorsButtons}));
+        localStorage.setItem("stack", JSON.stringify({data : this.callStack}));
       },
       deep: true
     },
     settings: {
       handler(){
+        console.log("a")
         localStorage.setItem("settings", JSON.stringify({data : this.settings}));
+      },
+      deep: true
+    },
+    elevatorLoaders: {
+      handler () {
+        if (this.elevatorLoaders.length !== this.settings.shafts) return
+        if (this.callStack.length === 0 ) return
+        if (this.elevatorLoaders.every(item => item)) return
+        const shaft = this.elevatorLoaders.findIndex(item => !item)
+         
+        if (shaft === -1) return
+        const newFloor = this.callStack[0]
+        this.callStack = this.callStack.slice(1,)
+        this.callElevator(newFloor, this.shafts[shaft].floor, shaft)
       },
       deep: true
     }
   },
   methods:{
+    // Создание шахт лифта
     createShafts(){
-      for (let i = 0; i < this.settings.shafts; i++) {
+      const { settings } = this
+      this.shafts = []
+      for (let i = 0; i < settings.shafts; i++) {
         this.shafts.push({
-          floor: 1,                                                  // Текущий этаж на котором находится лифт
-          top: this.settings.floorBox * (this.settings.floors - 1),  // Этаж на котором находится лифт в пикселях
-          loader: false,                                                    // Занят ли в данный момент лифт
-          waitingFlag:false,                                                // Флаг ожидания лифта по прибытию на необходимый этаж
-          arrow: '',                                                        // Направление движения лифта
+          floor: 0,                                          // Текущий этаж на котором находится лифт
+          top: settings.floorBox * (settings.floors - 1),    // Этаж на котором находится лифт в пикселях
+          waitingFlag:false,                                 // Флаг ожидания лифта по прибытию на необходимый этаж
+          arrow: '',                                         // Направление движения лифта
         });
       };
-      for (let i = 0; i < this.settings.floors; i++) {
-        this.floorsButtons[i] = true;
-    };
+      this.floorsButtons = []
+      this.elevatorLoaders = []
+      for (let i = 0; i < settings.floors; i++) {
+        this.floorsButtons.push(true)
+      };
+      for (let i = 0; i < settings.shafts; i++) {
+        this.elevatorLoaders.push(false)
+      }
     },
+    // Вызов лифта на нужный этаж
+    async callElevator (targetFloor, oldFloor, shaft) {
+      const { settings } = this
 
-    async callElevator(targetFloor){
-      if (this.shafts.values === 0) return;
+      this.shafts[shaft].arrow = targetFloor > oldFloor ? "up": "down";
+      let diff = Math.abs(oldFloor - targetFloor)
+
+      this.elevatorLoaders[shaft] = true;
+      this.floorsButtons[targetFloor] = false;
+      this.shafts[shaft].floor = targetFloor;
+
+      let newTop = settings.floorBox * (settings.floors - targetFloor - 1);
+
+      await this.elevatorMovement(shaft, newTop, diff, targetFloor);
+
+    },
+    // Поиск ближайшего лифта
+    async findElevator (targetFloor) {
+      const { settings, elevatorLoaders, shafts } = this
+      
+      if (shafts.length === 0) return;
+      if (this.callStack.includes(targetFloor)) return
 
       let closestShaft = -1;
-      let diff = this.settings.floors + 1;
-      let elevatorPosition = 0;
+      let diff = settings.floors;
 
-      for (let i = 0; i < this.shafts.length; i++) {
-        if (this.shafts[i].floor === targetFloor) return;
-        if (Math.abs(this.shafts[i].floor - targetFloor) < diff && !this.shafts[i].loader) {
-            elevatorPosition = this.shafts[i].floor;
+      for (let i = 0; i < shafts.length; i++) {
+        if (shafts[i].floor === targetFloor) return;
+        if (Math.abs(shafts[i].floor - targetFloor) < diff && !elevatorLoaders[i]) {
             closestShaft = i;
-            diff = Math.abs(this.shafts[i].floor - targetFloor);
+            diff = Math.abs(shafts[i].floor - targetFloor);
         };
       }
-      if (closestShaft === -1) return;
-
-      this.shafts[closestShaft].loader = true;
-      this.floorsButtons[targetFloor - 1] = false;
-      this.shafts[closestShaft].floor = targetFloor;
-
-      let newTop = this.settings.floorBox * (this.settings.floors - targetFloor);
-
-      this.shafts[closestShaft].arrow = `${targetFloor > elevatorPosition ? "up": "down"}`
-      await this.elevatorMovement(closestShaft, newTop, diff, targetFloor);
+      if (closestShaft === -1) {
+        this.callStack.push(targetFloor)
+        this.floorsButtons[targetFloor] = false
+        return
+      } else {
+        await this.callElevator(targetFloor, shafts[closestShaft].floor, closestShaft)
+      }
     },
-
+    // Механика движения лифта на определённый этаж с определённым шагом
     async elevatorMovement(choosenShaft, newTop, diff, targetFloor){
       const step = (this.shafts[choosenShaft].top - newTop) / Math.round(20 * diff);
       
@@ -158,48 +171,133 @@ export default{
 
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      this.floorsButtons[targetFloor - 1] = true;
-      this.shafts[choosenShaft].loader = false;
+      this.floorsButtons[targetFloor] = true;
+      this.elevatorLoaders[choosenShaft] = false;
       this.shafts[choosenShaft].waitingFlag = false;
       
     },
-
+    // Функция отправки выбранного лифта на первый этаж
     async reset(shaftIndex){
-      if (this.shafts[shaftIndex].loader) return;
+      if (this.elevatorLoaders[shaftIndex] 
+        || this.shafts[shaftIndex].waitingFlag 
+        || this.shafts[shaftIndex].floor === 0) return;
 
-      const tempFloor = this.shafts[shaftIndex].floor - 1;
+      const tempFloor = this.shafts[shaftIndex].floor;
       const newTop = (this.settings.floors - 1) * this.settings.floorBox
 
-      this.shafts[shaftIndex].loader = true;
-      this.shafts[shaftIndex].floor = 1;
+      this.elevatorLoaders[shaftIndex] = true;
+      this.shafts[shaftIndex].floor = 0;
       this.shafts[shaftIndex].arrow = "down";
       
-      await this.elevatorMovement(shaftIndex, newTop, tempFloor , 1); 
+      await this.elevatorMovement(shaftIndex, newTop, tempFloor , 0); 
     },
 
     newSettings(){
-      if(this.newFloor > 20 || this.newShafts > 20){
+      // Проверка на целые числа
+      if(!Number.isInteger(this.newFloor) || !Number.isInteger(this.newShafts) || !Number.isInteger(this.newBox)){
         this.msgFlag = true
-        this.msg = "Таких домов не бывает"
-        setTimeout(()=>{this.msg = false}, 3000);
+        this.msg = "Введите целые числа"
+        setTimeout(()=>{this.msgFlag = false}, 3000);
         return
       }
-      if(Number.isInteger(this.newFloor) && Number.isInteger(this.newShafts)){
-        for(let i = 0; i < this.shafts.length; i++){
-          if(this.shafts[i].loader){
-            this.msgFlag = true
-            this.msg = "Лифт движется"
-            setTimeout(()=>{this.msg = false}, 3000);
-            return
+      // Проверка на удовлетворимый диапозон значений
+      if(this.newFloor > 20 || this.newFloor < 2 ||
+        this.newShafts > 20 || this.newShafts < 1 || 
+        this.newBox < 20 || this.newBox > 40)
+        {
+        this.msgFlag = true
+        this.msg = "Не те числа"
+        setTimeout(()=>{this.msgFlag = false}, 3000);
+        return
+      }
+      // Проверка на движущиеся лифты
+      for(let i = 0; i < this.shafts.length; i++){
+        if (this.elevatorLoaders[i]){
+          this.msgFlag = true
+          this.msg = "Лифт движется"
+          setTimeout(()=>{this.msgFlag = false}, 3000);
+          return
+        }
+      }
+      // Изолирование входных параметров
+      if (this.newShafts === this.settings.shafts && this.newFloor === this.settings.floors){
+        if (this.newBox !== this.settings.floorBox){
+          this.settings.floorBox = this.newBox
+          for (let i = 0; i < this.shafts.length; i++){
+            this.shafts[i].top = this.settings.floorBox * (this.settings.floors - this.shafts[i].floor - 1);
           }
         }
-        this.settings.floors = this.newFloor;
-        this.settings.shafts = this.newShafts;
-        this.shafts = []
-
-        this.createShafts()
+        return
       }
+      this.settings.floors = this.newFloor;
+      this.settings.shafts = this.newShafts;
+      this.settings.floorBox = this.newBox;
+
+      this.createShafts()
     },
+  },
+  
+  created(){
+    // Подтягивание настроек из стора
+    if(localStorage.getItem("settings")){
+      this.settings = JSON.parse(localStorage.getItem("settings")).data;
+    }
+    this.newFloor = this.settings.floors;
+    this.newShafts = this.settings.shafts;
+    this.newBox = this.settings.floorBox;
+  },
+  mounted() {
+    // Если в сторе нет данных
+    if(!localStorage.getItem("shafts")){
+      this.createShafts();
+    }
+    // Если в сторе нет данных 
+    else{
+      this.callStack = JSON.parse(localStorage.getItem("stack"))?.data ?? [];
+
+      const shaftsFromStore = JSON.parse(localStorage.getItem("shafts")).data;
+
+      for (let i = 0; i < this.settings.floors; i++) {
+        this.floorsButtons.push(true)
+      };
+
+      for(let i = 0; i < Object.keys(shaftsFromStore).length; i++){
+        this.shafts.push(shaftsFromStore[i.toString()]);
+      };
+      // Флаги для продолжения анимации ожидания после обновления
+      for(let i = 0; i < this.shafts.length; i++){
+        if(this.shafts[i].waitingFlag){
+          setTimeout(()=>{
+            this.floorsButtons[this.shafts[i].floor] = true;
+            this.elevatorLoaders[i] = false;
+            this.shafts[i].waitingFlag = false;
+          }, 3000);
+      
+        }
+        // Продолжение движения лифта после обновления
+        else if(this.shafts[i].arrow !== ''){
+          const currFloor = ((this.settings.floors * this.settings.floorBox) - this.shafts[i].top) / this.settings.floorBox
+          this.callElevator(this.shafts[i].floor, currFloor - 1, i)
+
+        }else if(this.elevatorLoaders[i]){
+          this.elevatorLoaders[i] = false;
+        };
+      };
+      // Отключение занятых кнопок
+      for (const shaft of this.shafts) {
+        if (shaft.floor !== 0) {
+          if (shaft.waitingFlag) {
+            this.floorsButtons[shaft.floor] = false
+          }
+        }
+      }
+      // Отключение занятых кнопок в колстаке
+      if (this.callStack.length !== 0) {
+        for (const item of this.callStack) {
+          this.floorsButtons[item] = false
+        }
+      }
+    }
   }
 }
 </script>

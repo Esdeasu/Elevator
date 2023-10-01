@@ -4,9 +4,11 @@
       class="floor" 
       :style="`height: ${getSettings.floorBox}px; width: ${getSettings.floorBox}px`">
       <button 
-        style="height: 30px; width: 100%"
-        :class="{'waitingButt' : !getFloorButtons[getSettings.floors - index]}" 
-        @click="$emit('callElevator', (getSettings.floors - index + 1))">
+        style="width: 100%;"
+        :style="`height: ${getSettings.floorBox}px;`"
+        :class="{'waitingButt' : !getFloorButtons[getSettings.floors - index]}"
+        :disabled="!getFloorButtons[getSettings.floors - index]" 
+        @click="$emit('callElevator', (getSettings.floors - index))">
           {{  getSettings.floors - index + 1 }}
       </button> 
     </div>
@@ -42,5 +44,12 @@ export default{
 }
 .waitingButt{
   background-color: rgb(223, 118, 118);
+}
+button {
+  cursor: pointer;
+}
+.waitingButt:disabled{
+  color: black;
+  cursor: default;
 }
 </style>
