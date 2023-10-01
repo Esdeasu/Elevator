@@ -4,7 +4,7 @@
     <input type="number" v-model="newFloor">
     Кол. лифтов
     <input type="number" v-model="newShafts">
-    <div v-if="message">Лифт движется</div>
+    <div v-if="msgFlag">{{ msg }}</div>
     <button @click = "newSettings" style="margin-top: 10px;">Ок</button>
   </div>
   
@@ -38,12 +38,13 @@ export default{
       settings: {
         shafts: 5,
         floors: 17,
-        floorBox: 20,
+        floorBox: 30,
       },
 
       shafts: [],        
       floorsButtons: [],
-      message: false,
+      msgFlag: false,
+      msg: "",
     };
   },
   created(){
@@ -104,10 +105,9 @@ export default{
   methods:{
     createShafts(){
       for (let i = 0; i < this.settings.shafts; i++) {
-        const newFloor = Math.round(Math.random() * (this.settings.floors - 1)) + 1;
         this.shafts.push({
-          floor: newFloor,                                                  // Текущий этаж на котором находится лифт
-          top: this.settings.floorBox * (this.settings.floors - newFloor),  // Этаж на котором находится лифт в пикселях
+          floor: 1,                                                  // Текущий этаж на котором находится лифт
+          top: this.settings.floorBox * (this.settings.floors - 1),  // Этаж на котором находится лифт в пикселях
           loader: false,                                                    // Занят ли в данный момент лифт
           waitingFlag:false,                                                // Флаг ожидания лифта по прибытию на необходимый этаж
           arrow: '',                                                        // Направление движения лифта
@@ -149,7 +149,7 @@ export default{
       const step = (this.shafts[choosenShaft].top - newTop) / Math.round(20 * diff);
       
       for (let i = 0; i < Math.round(20 * diff); i++) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 40));
         this.shafts[choosenShaft].top -= step;
       };
 
@@ -178,11 +178,18 @@ export default{
     },
 
     newSettings(){
+      if(this.newFloor > 20 || this.newShafts > 20){
+        this.msgFlag = true
+        this.msg = "Таких домов не бывает"
+        setTimeout(()=>{this.msg = false}, 3000);
+        return
+      }
       if(Number.isInteger(this.newFloor) && Number.isInteger(this.newShafts)){
         for(let i = 0; i < this.shafts.length; i++){
           if(this.shafts[i].loader){
-            this.message = true
-            setTimeout(()=>{this.message = false}, 3000);
+            this.msgFlag = true
+            this.msg = "Лифт движется"
+            setTimeout(()=>{this.msg = false}, 3000);
             return
           }
         }

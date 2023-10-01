@@ -64,14 +64,16 @@ export default{
   flex-direction: row;
   justify-content: center;
   text-align: center;
+  align-items: center;
   position: absolute;
   min-width: 50px;
-  background-color: aliceblue;
+  background-color: rgb(168, 206, 240);
+  border-radius: 5px;
   z-index: -1;
 }
 .reset {
   position: absolute;
-  bottom: -50px;
+  bottom: -40px;
   height: 40px;
   min-width: 50px;
 }
@@ -80,7 +82,7 @@ export default{
 }
 @keyframes waiting {
   from{
-    
+    background-color: rgb(255, 255, 255);
   }
   to{
     background-color: rgb(194, 147, 147);

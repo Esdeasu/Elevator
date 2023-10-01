@@ -4,7 +4,7 @@
       class="floor" 
       :style="`height: ${getSettings.floorBox}px; width: ${getSettings.floorBox}px`">
       <button 
-        style="width: 100%"
+        style="height: 30px; width: 100%"
         :class="{'waitingButt' : !getFloorButtons[getSettings.floors - index]}" 
         @click="$emit('callElevator', (getSettings.floors - index + 1))">
           {{  getSettings.floors - index + 1 }}
